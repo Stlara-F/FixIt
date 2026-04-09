@@ -18,13 +18,11 @@ RUN hugo version
 
 WORKDIR /build
 
-# 下载 FixIt 主题的 Release 压缩包
-ADD https://github.com/hugo-fixit/FixIt/archive/refs/tags/v0.3.6.tar.gz /tmp/
+# 完整克隆 FixIt 主题（不使用 --depth 1，确保 exampleSite 存在）
+RUN git clone --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
-# 解压到 themes/FixIt（自动剥离顶层目录），并复制 exampleSite 内容
-RUN mkdir -p /build/themes/FixIt && \
-    tar -xzf /tmp/v0.3.6.tar.gz -C /build/themes/FixIt --strip-components=1 && \
-    cp -r /build/themes/FixIt/exampleSite/. /build/
+# 复制 exampleSite 内容到当前目录
+RUN cp -r themes/FixIt/exampleSite/. .
 
 # 修正主题配置：确保主题名称正确
 RUN sed -i 's|theme = .*|theme = "FixIt"|' config.toml
@@ -40,7 +38,7 @@ RUN apk add --no-cache bash libstdc++
 # 复制 hugo 二进制
 COPY --from=builder /usr/local/bin/hugo /usr/local/bin/hugo
 
-# 复制默认站点的完整源码
+# 复制默认站点的完整源码（用于运行时动态生成）
 COPY --from=builder /build /app/default-site
 COPY --from=builder /default-public /usr/share/nginx/html
 
