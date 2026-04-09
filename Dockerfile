@@ -9,7 +9,10 @@ RUN case ${TARGETARCH} in \
         "arm64")  HUGO_ARCH="ARM64" ;; \
         *)        echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
     esac && \
-    curl -L "https://github.com/gohugoio/hugo/releases/download/v0.156.0/hugo_extended_0.156.0_Linux-${HUGO_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
+    curl -L "https://github.com/gohugoio/hugo/releases/download/v0.156.0/hugo_extended_0.156.0_Linux-${HUGO_ARCH}.tar.gz" -o /tmp/hugo.tar.gz && \
+    tar -xzf /tmp/hugo.tar.gz -C /tmp && \
+    mv /tmp/hugo /usr/local/bin/hugo && \
+    chmod +x /usr/local/bin/hugo
 
 RUN hugo version
 
@@ -20,7 +23,7 @@ WORKDIR /build
 # 克隆 FixIt 主题（使用 v0.4.5）
 RUN git clone --depth 1 --branch v0.4.5 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
-# 生成配置文件（直接写入，不依赖外部文件）
+# 生成配置文件
 RUN cat > config.toml <<EOF
 baseURL = "https://example.org/"
 title = "My FixIt Site"
@@ -45,7 +48,7 @@ paginate = 10
   defaultTheme = "auto"
 EOF
 
-# 创建首页（必须）
+# 创建首页
 RUN cat > content/_index.md <<EOF
 ---
 title: "Home"
@@ -53,14 +56,14 @@ title: "Home"
 Welcome to my FixIt site.
 EOF
 
-# 创建一篇示例文章
+# 创建示例文章
 RUN mkdir -p content/posts && \
     printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post. You can replace it by mounting your own content.' > content/posts/welcome.md
 
 # 构建静态文件
 RUN hugo --minify --destination /public
 
-# 验证 index.html 存在（关键，确保主题工作正常）
+# 验证 index.html 存在
 RUN test -f /public/index.html || (echo "index.html not generated" && exit 1)
 
 # 阶段二：提供静态文件的 Nginx
@@ -68,7 +71,6 @@ FROM nginx:stable-alpine
 
 COPY --from=builder /build/public /usr/share/nginx/html
 
-# 极简启动脚本（直接启动 nginx）
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
