@@ -1,12 +1,12 @@
-# 阶段一：构建默认站点
-FROM hugomods/hugo:0.156.0-exts AS builder
+# 阶段一：构建默认站点（使用 klakegg/hugo 镜像）
+FROM klakegg/hugo:0.156.0-exts AS builder
 
 # 安装 git（主题需要）
 RUN apk add --no-cache git
 
 WORKDIR /build
 
-# 克隆 FixIt 主题（使用稳定版本标签）
+# 克隆 FixIt 主题（使用稳定版本标签 v0.3.6）
 RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
 # 复制官方示例站点
@@ -25,8 +25,8 @@ FROM nginx:stable-alpine
 
 RUN apk add --no-cache bash libstdc++
 
-# 复制 hugo 二进制
-COPY --from=builder /usr/bin/hugo /usr/local/bin/hugo
+# 复制 hugo 二进制（从 builder 阶段）
+COPY --from=builder /usr/local/bin/hugo /usr/local/bin/hugo
 
 # 复制默认站点的完整源码
 COPY --from=builder /build /app/default-site
