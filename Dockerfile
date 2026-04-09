@@ -18,11 +18,12 @@ RUN hugo version
 
 WORKDIR /build
 
-# 克隆 FixIt 主题（包含 exampleSite）
-RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git themes/FixIt
-
-# 直接从主题目录复制 exampleSite 内容到当前工作目录
-RUN cp -r themes/FixIt/exampleSite/* .
+# 下载 FixIt 主题的 Release 压缩包（避免 git 浅克隆问题）
+ADD https://github.com/hugo-fixit/FixIt/archive/refs/tags/v0.3.6.tar.gz /tmp/
+RUN tar -xzf /tmp/v0.3.6.tar.gz -C /tmp && \
+    mv /tmp/FixIt-0.3.6 /build/themes/FixIt && \
+    # 复制 exampleSite 内容到当前工作目录
+    cp -r /build/themes/FixIt/exampleSite/. /build/
 
 # 修正主题配置：确保主题名称正确
 RUN sed -i 's|theme = .*|theme = "FixIt"|' config.toml
