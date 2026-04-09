@@ -20,8 +20,30 @@ WORKDIR /build
 # 克隆 FixIt 主题（使用 v0.4.5）
 RUN git clone --depth 1 --branch v0.4.5 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
-# 复制预先准备好的配置文件
-COPY config.toml .
+# 生成配置文件（直接写入，不依赖外部文件）
+RUN cat > config.toml <<EOF
+baseURL = "https://example.org/"
+title = "My FixIt Site"
+theme = "FixIt"
+defaultContentLanguage = "zh-cn"
+enableRobotsTXT = true
+paginate = 10
+
+[markup]
+  _merge = "shallow"
+
+[outputs]
+  _merge = "shallow"
+
+[taxonomies]
+  _merge = "shallow"
+
+[params]
+  version = "4.x"
+  description = "A site built with Hugo FixIt theme"
+  keywords = ["Hugo", "FixIt", "Blog"]
+  defaultTheme = "auto"
+EOF
 
 # 创建首页（必须）
 RUN cat > content/_index.md <<EOF
@@ -38,7 +60,7 @@ RUN mkdir -p content/posts && \
 # 构建静态文件
 RUN hugo --minify --destination /public
 
-# 验证 index.html 存在（关键）
+# 验证 index.html 存在（关键，确保主题工作正常）
 RUN test -f /public/index.html || (echo "index.html not generated" && exit 1)
 
 # 阶段二：提供静态文件的 Nginx
@@ -46,9 +68,10 @@ FROM nginx:stable-alpine
 
 COPY --from=builder /build/public /usr/share/nginx/html
 
-# 可选：复制一个简单的启动脚本，用于支持未来可能的动态合并（暂不需要复杂逻辑）
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# 极简启动脚本（直接启动 nginx）
+RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+    echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 ENTRYPOINT ["/docker-entrypoint.sh"]
