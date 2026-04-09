@@ -24,7 +24,7 @@ RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git 
 # 复制示例站点到当前工作目录
 RUN cp -r repo/apps/demo/* .
 
-# 将主题源码复制到 themes/FixIt 目录（覆盖可能存在的空目录）
+# 将主题源码复制到 themes/FixIt 目录
 RUN mkdir -p themes/FixIt && \
     cp -r repo/layouts repo/assets repo/i18n repo/data repo/archetypes repo/static repo/theme.toml themes/FixIt/
 
@@ -32,21 +32,11 @@ RUN mkdir -p themes/FixIt && \
 RUN sed -i 's|^theme = .*|theme = "FixIt"|' hugo.toml && \
     sed -i 's|^baseURL = .*|baseURL = "https://example.org/"|' hugo.toml
 
-# 可选：为 demo 添加一篇额外的欢迎文章（如果 content 为空）
-RUN if [ ! -d content/posts ] || [ -z "$(ls -A content/posts 2>/dev/null)" ]; then \
-        mkdir -p content/posts && \
-        cat > content/posts/welcome.md <<EOF
----
-title: "Welcome to FixIt Docker"
-date: $(date +%Y-%m-%d)
-draft: false
----
-
-This is a default post from the Docker image. You can replace it by mounting your own content.
-
-Happy blogging!
-EOF \
-    ; fi
+# 确保至少有一篇文章（如果 demo 中没有 posts）
+RUN if [ ! -d content/posts ]; then mkdir -p content/posts; fi && \
+    if [ ! -f content/posts/welcome.md ]; then \
+        printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post from the Docker image. You can replace it by mounting your own content.' '' 'Happy blogging!' > content/posts/welcome.md; \
+    fi
 
 # 构建静态文件（作为容器启动时的后备内容）
 RUN hugo --minify --destination /default-public
