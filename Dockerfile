@@ -21,19 +21,8 @@ RUN hugo new site /build --force
 
 WORKDIR /build
 
-# 克隆 FixIt 主题（使用稳定标签 v0.3.6，确保存在）
-RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git /tmp/fixit-repo
-
-# 将主题核心文件复制到 themes/FixIt
-RUN mkdir -p themes/FixIt && \
-    cp -r /tmp/fixit-repo/layouts \
-          /tmp/fixit-repo/assets \
-          /tmp/fixit-repo/i18n \
-          /tmp/fixit-repo/data \
-          /tmp/fixit-repo/archetypes \
-          /tmp/fixit-repo/static \
-          /tmp/fixit-repo/theme.toml \
-          themes/FixIt/
+# 克隆 FixIt 主题（整个仓库作为主题目录）
+RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
 # 生成基础配置文件（符合 FixIt 主题要求）
 RUN cat > config.toml <<EOF
@@ -61,7 +50,7 @@ summaryLength = 70
   defaultTheme = "auto"
 EOF
 
-# 创建一篇默认示例文章（确保站点有内容）
+# 创建一篇默认示例文章
 RUN mkdir -p content/posts && \
     printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post from the Docker image. You can replace it by mounting your own content.' '' 'Happy blogging!' > content/posts/welcome.md
 
