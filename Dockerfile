@@ -1,5 +1,5 @@
 # 阶段一：构建默认站点（使用官方示例站点 + FixIt 主题）
-FROM hugomods/hugo:exts-0.156.0 AS builder
+FROM peaceiris/hugo-extended:0.156.0 AS builder
 
 # 安装 git（主题需要）
 RUN apk add --no-cache git
