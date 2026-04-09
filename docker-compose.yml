@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  fixit:
+    # 构建镜像（如果你已 push 到仓库，可替换为 image: yourname/fixit:latest）
+    build: .
+    container_name: fixit-blog
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - BASE_URL=https://your-domain.com   # 可选，覆盖站点 baseURL
+    volumes:
+      # === 方式一：只覆盖部分内容（推荐新手）===
+      - ./my-content:/data/content        # 自定义文章目录
+      - ./my-config.toml:/config/config.toml  # 自定义配置文件
+      # - ./my-static:/data/static         # 自定义静态文件
+      # - ./my-layouts:/data/layouts       # 自定义模板
+      
+      # === 方式二：使用完整站点（高级用户）===
+      # - ./my-full-site:/site              # 整个站点源码（包含 config.toml、content、themes 等）
+
+    # 开发模式（实时预览，可选）：
+    # command: hugo server --bind 0.0.0.0 --port 80 --disableFastRender
+    # ports:
+    #   - "1313:80"
+    # volumes:
+    #   - ./my-full-site:/site
