@@ -16,27 +16,54 @@ RUN case ${TARGETARCH} in \
 # 验证 Hugo 版本
 RUN hugo version
 
+# 创建空白站点
+RUN hugo new site /build --force
+
 WORKDIR /build
 
-# 克隆完整的 FixIt 仓库（包含主题源码和 apps/demo）
-RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git repo
+# 克隆 FixIt 主题（使用稳定标签 v0.3.6，确保存在）
+RUN git clone --depth 1 --branch v0.3.6 https://github.com/hugo-fixit/FixIt.git /tmp/fixit-repo
 
-# 复制示例站点到当前工作目录
-RUN cp -r repo/apps/demo/* .
-
-# 将主题源码复制到 themes/FixIt 目录
+# 将主题核心文件复制到 themes/FixIt
 RUN mkdir -p themes/FixIt && \
-    cp -r repo/layouts repo/assets repo/i18n repo/data repo/archetypes repo/static repo/theme.toml themes/FixIt/
+    cp -r /tmp/fixit-repo/layouts \
+          /tmp/fixit-repo/assets \
+          /tmp/fixit-repo/i18n \
+          /tmp/fixit-repo/data \
+          /tmp/fixit-repo/archetypes \
+          /tmp/fixit-repo/static \
+          /tmp/fixit-repo/theme.toml \
+          themes/FixIt/
 
-# 修正 demo 站点配置：确保主题名称正确，并设置 baseURL
-RUN sed -i 's|^theme = .*|theme = "FixIt"|' hugo.toml && \
-    sed -i 's|^baseURL = .*|baseURL = "https://example.org/"|' hugo.toml
+# 生成基础配置文件（符合 FixIt 主题要求）
+RUN cat > config.toml <<EOF
+baseURL = "https://example.org/"
+title = "My FixIt Site"
+theme = "FixIt"
+defaultContentLanguage = "zh-cn"
+enableRobotsTXT = true
+paginate = 10
+summaryLength = 70
 
-# 确保至少有一篇文章（如果 demo 中没有 posts）
-RUN if [ ! -d content/posts ]; then mkdir -p content/posts; fi && \
-    if [ ! -f content/posts/welcome.md ]; then \
-        printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post from the Docker image. You can replace it by mounting your own content.' '' 'Happy blogging!' > content/posts/welcome.md; \
-    fi
+[markup]
+  _merge = "shallow"
+
+[outputs]
+  _merge = "shallow"
+
+[taxonomies]
+  _merge = "shallow"
+
+[params]
+  version = "4.x"
+  description = "A site built with Hugo FixIt theme"
+  keywords = ["Hugo", "FixIt", "Blog"]
+  defaultTheme = "auto"
+EOF
+
+# 创建一篇默认示例文章（确保站点有内容）
+RUN mkdir -p content/posts && \
+    printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post from the Docker image. You can replace it by mounting your own content.' '' 'Happy blogging!' > content/posts/welcome.md
 
 # 构建静态文件（作为容器启动时的后备内容）
 RUN hugo --minify --destination /default-public
