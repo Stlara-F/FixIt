@@ -18,11 +18,12 @@ RUN hugo version
 
 WORKDIR /build
 
-# 下载 FixIt 主题的 Release 压缩包（避免 git 浅克隆问题）
+# 下载 FixIt 主题的 Release 压缩包
 ADD https://github.com/hugo-fixit/FixIt/archive/refs/tags/v0.3.6.tar.gz /tmp/
-RUN tar -xzf /tmp/v0.3.6.tar.gz -C /tmp && \
-    mv /tmp/FixIt-0.3.6 /build/themes/FixIt && \
-    # 复制 exampleSite 内容到当前工作目录
+
+# 解压到 themes/FixIt（自动剥离顶层目录），并复制 exampleSite 内容
+RUN mkdir -p /build/themes/FixIt && \
+    tar -xzf /tmp/v0.3.6.tar.gz -C /build/themes/FixIt --strip-components=1 && \
     cp -r /build/themes/FixIt/exampleSite/. /build/
 
 # 修正主题配置：确保主题名称正确
@@ -36,10 +37,10 @@ FROM nginx:stable-alpine
 
 RUN apk add --no-cache bash libstdc++
 
-# 复制 hugo 二进制（从 builder 阶段）
+# 复制 hugo 二进制
 COPY --from=builder /usr/local/bin/hugo /usr/local/bin/hugo
 
-# 复制默认站点的完整源码（用于运行时动态生成）
+# 复制默认站点的完整源码
 COPY --from=builder /build /app/default-site
 COPY --from=builder /default-public /usr/share/nginx/html
 
