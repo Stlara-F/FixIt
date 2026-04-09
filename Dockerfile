@@ -1,10 +1,12 @@
-# 阶段一：构建静态站点
-FROM alpine:3.19 AS builder
+# 阶段一：构建静态站点（使用 Ubuntu 确保 glibc 环境）
+FROM ubuntu:22.04 AS builder
 
-# 1. 安装基础工具和 glibc 兼容层（必须放在最前面）
-RUN apk add --no-cache git curl bash libc6-compat
+# 安装必要工具
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. 下载并安装 hugo
+# 下载并安装 Hugo extended
 ARG TARGETARCH
 RUN case ${TARGETARCH} in \
         "amd64")  HUGO_ARCH="64bit" ;; \
@@ -16,17 +18,17 @@ RUN case ${TARGETARCH} in \
     mv /tmp/hugo /usr/local/bin/hugo && \
     chmod +x /usr/local/bin/hugo
 
-# 3. 验证 hugo 可执行（现在应该能运行）
+# 验证 Hugo 可执行
 RUN hugo version
 
-# 4. 创建空白站点
+# 创建空白站点
 RUN hugo new site /build --force
 WORKDIR /build
 
-# 5. 克隆 FixIt 主题
+# 克隆 FixIt 主题（使用稳定版本 v0.4.5）
 RUN git clone --depth 1 --branch v0.4.5 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
-# 6. 生成配置文件
+# 生成配置文件
 RUN cat > config.toml <<EOF
 baseURL = "https://example.org/"
 title = "My FixIt Site"
@@ -51,7 +53,7 @@ paginate = 10
   defaultTheme = "auto"
 EOF
 
-# 7. 创建首页
+# 创建首页（必须）
 RUN cat > content/_index.md <<EOF
 ---
 title: "Home"
@@ -59,17 +61,17 @@ title: "Home"
 Welcome to my FixIt site.
 EOF
 
-# 8. 创建示例文章
+# 创建一篇示例文章
 RUN mkdir -p content/posts && \
     printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post. You can replace it by mounting your own content.' > content/posts/welcome.md
 
-# 9. 构建静态文件
+# 构建静态文件
 RUN hugo --minify --destination /public
 
-# 10. 验证 index.html 存在
+# 验证 index.html 存在
 RUN test -f /public/index.html || (echo "ERROR: index.html not generated" && exit 1)
 
-# 阶段二：运行 Nginx
+# 阶段二：运行时（轻量 Nginx）
 FROM nginx:stable-alpine
 
 COPY --from=builder /build/public /usr/share/nginx/html
