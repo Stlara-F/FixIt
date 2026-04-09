@@ -1,4 +1,4 @@
-本 fork 由 Github Actions 自动打包到 DockerHub
+本 fork 由 Github Actions 自动打包到 DockerHub ， 构建代码完全由AI完成
 
 <!-- markdownlint-disable-file MD033 MD041 -->
 ![Hugo Theme FixIt](https://fixit.lruihao.cn/images/apple-devices-preview.png)
