@@ -18,17 +18,18 @@ RUN case ${TARGETARCH} in \
 
 RUN hugo version
 
-# 克隆 starter 模板
 RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
-# 构建到绝对路径 /public，并设置 baseURL 为根
+# 构建静态文件（baseURL 为根）
 RUN hugo --minify --baseURL "/" --destination /public
+
+# 修复硬编码的子路径（替换所有 /hugo-fixit-starter/ 为 /）
+RUN find /public -type f -name "*.html" -exec sed -i 's|/hugo-fixit-starter/|/|g' {} \;
 
 # 验证首页存在
 RUN test -f /public/index.html
 
-# 阶段二：Nginx 服务
 FROM nginx:stable-alpine
 COPY --from=builder /public /usr/share/nginx/html
 EXPOSE 80
