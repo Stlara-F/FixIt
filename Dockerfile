@@ -21,49 +21,9 @@ RUN case ${TARGETARCH} in \
 # 验证 Hugo 可执行
 RUN hugo version
 
-# 创建空白站点
-RUN hugo new site /build --force
+# 克隆官方 starter 模板（已包含主题和示例内容）
+RUN git clone --depth 1 --recurse-submodules https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
-
-# 克隆 FixIt 主题（使用稳定版本 v0.4.5）
-RUN git clone --depth 1 --branch v0.4.5 https://github.com/hugo-fixit/FixIt.git themes/FixIt
-
-# 生成配置文件
-RUN cat > config.toml <<EOF
-baseURL = "https://example.org/"
-title = "My FixIt Site"
-theme = "FixIt"
-defaultContentLanguage = "zh-cn"
-enableRobotsTXT = true
-paginate = 10
-
-[markup]
-  _merge = "shallow"
-
-[outputs]
-  _merge = "shallow"
-
-[taxonomies]
-  _merge = "shallow"
-
-[params]
-  version = "4.x"
-  description = "A site built with Hugo FixIt theme"
-  keywords = ["Hugo", "FixIt", "Blog"]
-  defaultTheme = "auto"
-EOF
-
-# 创建首页（必须）
-RUN cat > content/_index.md <<EOF
----
-title: "Home"
----
-Welcome to my FixIt site.
-EOF
-
-# 创建一篇示例文章
-RUN mkdir -p content/posts && \
-    printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post. You can replace it by mounting your own content.' > content/posts/welcome.md
 
 # 构建静态文件
 RUN hugo --minify --destination /public
