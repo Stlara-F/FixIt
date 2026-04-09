@@ -22,7 +22,7 @@ RUN hugo version
 RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
-# 关键：覆盖 baseURL 为根路径，避免子目录前缀
+# 构建到绝对路径 /public，并设置 baseURL 为根
 RUN hugo --minify --baseURL "/" --destination /public
 
 # 验证首页存在
@@ -30,6 +30,6 @@ RUN test -f /public/index.html
 
 # 阶段二：Nginx 服务
 FROM nginx:stable-alpine
-COPY --from=builder /build/public /usr/share/nginx/html
+COPY --from=builder /public /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
