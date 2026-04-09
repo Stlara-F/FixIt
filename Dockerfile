@@ -1,12 +1,11 @@
-# 阶段一：构建静态站点（使用 Ubuntu 确保 glibc 环境）
+# 阶段一：构建静态站点
 FROM ubuntu:22.04 AS builder
 
-# 安装必要工具（包括 Go，用于 Hugo Modules）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates golang-go && \
     rm -rf /var/lib/apt/lists/*
 
-# 下载并安装 Hugo extended
+# 下载 hugo
 ARG TARGETARCH
 RUN case ${TARGETARCH} in \
         "amd64")  HUGO_ARCH="64bit" ;; \
@@ -18,23 +17,20 @@ RUN case ${TARGETARCH} in \
     mv /tmp/hugo /usr/local/bin/hugo && \
     chmod +x /usr/local/bin/hugo
 
-# 验证 Hugo 可执行
 RUN hugo version
 
-# 克隆官方 starter 模板（包含主题和示例内容）
+# 克隆 starter 模板
 RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
-# 构建静态文件
-RUN hugo --minify --destination /public
+# 构建到相对路径 public（注意：不是 /public）
+RUN hugo --minify --destination public
 
-# 验证 index.html 存在
-RUN test -f /public/index.html || (echo "ERROR: index.html not generated" && exit 1)
+# 验证文件存在
+RUN test -f public/index.html
 
-# 阶段二：运行时（轻量 Nginx）
+# 阶段二：Nginx 服务
 FROM nginx:stable-alpine
-
 COPY --from=builder /build/public /usr/share/nginx/html
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
