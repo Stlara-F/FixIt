@@ -1,61 +1,48 @@
 #!/bin/bash
 set -e
 
-# 辅助函数：如果目标目录为空，则从源目录填充默认内容
-populate_if_empty() {
-    local src="$1"
-    local dst="$2"
-    if [ -d "$dst" ] && [ -z "$(ls -A "$dst" 2>/dev/null)" ]; then
-        echo "  → Populating $dst with default content from $src"
-        cp -r "$src"/. "$dst"/
-    fi
-}
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# 辅助函数：合并目录内容（源覆盖目标）
-merge_dir() {
-    local src="$1"
-    local dst="$2"
-    if [ -d "$src" ] && [ -n "$(ls -A "$src" 2>/dev/null)" ]; then
-        echo "  → Merging $src into $dst"
-        mkdir -p "$dst"
-        cp -rf "$src"/. "$dst"/
-    fi
-}
+echo -e "${GREEN}🔧 FixIt Docker Entrypoint${NC}"
 
-echo "🚀 Starting FixIt container..."
-
-# --- 策略1：如果用户挂载了完整的站点目录到 /data/site，则直接使用它 ---
-if [ -d "/data/site" ] && [ -n "$(ls -A /data/site 2>/dev/null)" ]; then
-    echo "  → Using user-provided full site from /data/site"
-    # 清空默认站点，复制用户完整站点
-    rm -rf /app/site
-    cp -r /data/site /app/site
+if [ -d "/site" ] && [ -n "$(ls -A /site 2>/dev/null)" ]; then
+    SITE_DIR="/site"
+    echo -e "${YELLOW}📂 Using user-provided full site from /site${NC}"
 else
-    # --- 策略2：使用默认站点，并支持细分目录覆盖（向后兼容）---
-    # 初始化站点目录（如果 /app/site 为空，则从默认示例站点填充）
-    populate_if_empty /app/site-default /app/site
+    SITE_DIR="/app/default-site"
+    echo -e "${YELLOW}📂 Using default site, merging custom data from /data/*${NC}"
 
-    # 应用用户挂载的配置文件（/config/config.toml）
+    merge_dir() {
+        local src=$1
+        local dst=$2
+        if [ -d "$src" ] && [ -n "$(ls -A $src 2>/dev/null)" ]; then
+            echo "   Merging $src -> $dst"
+            cp -rf $src/. $dst/
+        fi
+    }
+
+    merge_dir /data/content    $SITE_DIR/content
+    merge_dir /data/static     $SITE_DIR/static
+    merge_dir /data/layouts    $SITE_DIR/layouts
+    merge_dir /data/assets     $SITE_DIR/assets
+    merge_dir /data/data       $SITE_DIR/data
+
     if [ -f /config/config.toml ]; then
-        echo "  → Applying custom config.toml"
-        cp /config/config.toml /app/site/config.toml
+        echo "   Using custom config.toml from /config"
+        cp /config/config.toml $SITE_DIR/config.toml
     fi
-
-    # 合并用户提供的内容/布局/静态资源等（细分覆盖）
-    merge_dir /data/content   /app/site/content
-    merge_dir /data/layouts   /app/site/layouts
-    merge_dir /data/static    /app/site/static
-    merge_dir /data/assets    /app/site/assets
-    merge_dir /data/data      /app/site/data
-    merge_dir /data/i18n      /app/site/i18n
-    merge_dir /data/themes    /app/themes   # 允许用户完全替换主题
 fi
 
-# 生成静态站点
-echo "🔨 Generating static site with Hugo..."
-cd /app/site
-hugo --minify --destination /usr/share/nginx/html
+echo -e "${GREEN}⚙️  Generating static site...${NC}"
+cd $SITE_DIR
 
-# 启动 Nginx
-echo "🌐 Starting Nginx..."
+if [ -n "$BASE_URL" ]; then
+    hugo --minify --baseURL "$BASE_URL" --destination /usr/share/nginx/html
+else
+    hugo --minify --destination /usr/share/nginx/html
+fi
+
+echo -e "${GREEN}✅ Static site generated, starting Nginx...${NC}"
 nginx -g "daemon off;"
