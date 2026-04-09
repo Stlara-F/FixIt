@@ -1,8 +1,15 @@
-# 阶段一：构建默认站点（使用 klakegg/hugo 镜像）
-FROM klakegg/hugo:0.156.0-exts AS builder
+# 阶段一：构建默认站点（手动安装 Hugo extended）
+FROM alpine:3.19 AS builder
 
-# 安装 git（主题需要）
-RUN apk add --no-cache git
+# 安装依赖：git, curl, bash, 以及 hugo 需要的运行时库
+RUN apk add --no-cache git curl bash libstdc++ libc6-compat
+
+# 下载指定版本的 Hugo extended（从 GitHub releases）
+ARG HUGO_VERSION=0.156.0
+RUN curl -L "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_Linux-64bit.tar.gz" | tar -xz -C /usr/local/bin
+
+# 验证安装
+RUN hugo version
 
 WORKDIR /build
 
