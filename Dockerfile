@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates golang-go && \
     rm -rf /var/lib/apt/lists/*
 
-# 下载 hugo
 ARG TARGETARCH
 RUN case ${TARGETARCH} in \
         "amd64")  HUGO_ARCH="64bit" ;; \
@@ -23,11 +22,11 @@ RUN hugo version
 RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
-# 构建到相对路径 public（注意：不是 /public）
-RUN hugo --minify --destination public
+# 关键：覆盖 baseURL 为根路径，避免子目录前缀
+RUN hugo --minify --baseURL "/" --destination /public
 
-# 验证文件存在
-RUN test -f public/index.html
+# 验证首页存在
+RUN test -f /public/index.html
 
 # 阶段二：Nginx 服务
 FROM nginx:stable-alpine
