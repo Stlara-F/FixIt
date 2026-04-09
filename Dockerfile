@@ -57,20 +57,15 @@ RUN mkdir -p content/posts && \
 # 构建静态文件（作为容器启动时的后备内容）
 RUN hugo --minify --destination /default-public
 
-# ========== 阶段二：运行时镜像 ==========
+# 阶段二：运行时镜像
 FROM nginx:stable-alpine
 
-RUN apk add --no-cache bash libstdc++
+RUN apk add --no-cache bash libstdc++ libc6-compat   # 添加这行
 
-# 复制 Hugo 二进制
 COPY --from=builder /usr/local/bin/hugo /usr/local/bin/hugo
-
-# 复制站点的完整源码（用于运行时动态重建）
 COPY --from=builder /build /app/default-site
-# 复制预构建的静态文件（作为 Nginx 默认内容）
 COPY --from=builder /default-public /usr/share/nginx/html
 
-# 创建可挂载的数据目录
 RUN mkdir -p /data/{content,static,layouts,assets,data} /config
 
 COPY docker-entrypoint.sh /usr/local/bin/
