@@ -1,10 +1,8 @@
-# 阶段一：构建默认站点（手动安装 Hugo extended，支持多架构）
+# 阶段一：构建静态站点
 FROM alpine:3.19 AS builder
 
-# 安装必要工具
-RUN apk add --no-cache git curl bash libstdc++ libc6-compat
+RUN apk add --no-cache git curl bash
 
-# 根据目标架构下载 Hugo extended 二进制
 ARG TARGETARCH
 RUN case ${TARGETARCH} in \
         "amd64")  HUGO_ARCH="64bit" ;; \
@@ -13,78 +11,44 @@ RUN case ${TARGETARCH} in \
     esac && \
     curl -L "https://github.com/gohugoio/hugo/releases/download/v0.156.0/hugo_extended_0.156.0_Linux-${HUGO_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
 
-# 验证 Hugo 版本
 RUN hugo version
 
 # 创建空白站点
 RUN hugo new site /build --force
-
 WORKDIR /build
 
-# 克隆 FixIt 主题（使用 v0.4.5，稳定且包含完整布局）
+# 克隆 FixIt 主题（使用 v0.4.5）
 RUN git clone --depth 1 --branch v0.4.5 https://github.com/hugo-fixit/FixIt.git themes/FixIt
 
-# 生成基础配置文件（符合 FixIt 主题要求）
-RUN cat > config.toml <<EOF
-baseURL = "https://example.org/"
-title = "My FixIt Site"
-theme = "FixIt"
-defaultContentLanguage = "zh-cn"
-enableRobotsTXT = true
-paginate = 10
+# 复制预先准备好的配置文件
+COPY config.toml .
 
-[markup]
-  _merge = "shallow"
-
-[outputs]
-  _merge = "shallow"
-
-[taxonomies]
-  _merge = "shallow"
-
-[params]
-  version = "4.x"
-  description = "A site built with Hugo FixIt theme"
-  keywords = ["Hugo", "FixIt", "Blog"]
-  defaultTheme = "auto"
-EOF
-
-# 创建首页内容（解决无 index.html 的问题）
+# 创建首页（必须）
 RUN cat > content/_index.md <<EOF
 ---
 title: "Home"
 ---
-
-Welcome to my FixIt site!
+Welcome to my FixIt site.
 EOF
 
-# 创建一篇默认示例文章
+# 创建一篇示例文章
 RUN mkdir -p content/posts && \
-    printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post from the Docker image. You can replace it by mounting your own content.' '' 'Happy blogging!' > content/posts/welcome.md
+    printf '%s\n' '---' 'title: "Welcome to FixIt Docker"' "date: $(date +%Y-%m-%d)" 'draft: false' '---' '' 'This is a default post. You can replace it by mounting your own content.' > content/posts/welcome.md
 
-# 构建静态文件（作为容器启动时的后备内容）
-RUN hugo --minify --destination /default-public
+# 构建静态文件
+RUN hugo --minify --destination /public
 
-# 注意：不再验证 index.html 是否存在，因为运行时 entrypoint 会重新生成
+# 验证 index.html 存在（关键）
+RUN test -f /public/index.html || (echo "index.html not generated" && exit 1)
 
-# ========== 阶段二：运行时镜像 ==========
+# 阶段二：提供静态文件的 Nginx
 FROM nginx:stable-alpine
 
-RUN apk add --no-cache bash libstdc++ libc6-compat
+COPY --from=builder /build/public /usr/share/nginx/html
 
-# 复制 Hugo 二进制
-COPY --from=builder /usr/local/bin/hugo /usr/local/bin/hugo
-
-# 复制站点的完整源码（用于运行时动态重建）
-COPY --from=builder /build /app/default-site
-# 复制预构建的静态文件（作为 Nginx 默认内容）
-COPY --from=builder /default-public /usr/share/nginx/html
-
-# 创建可挂载的数据目录
-RUN mkdir -p /data/{content,static,layouts,assets,data} /config
-
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# 可选：复制一个简单的启动脚本，用于支持未来可能的动态合并（暂不需要复杂逻辑）
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
