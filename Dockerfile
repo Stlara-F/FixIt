@@ -1,9 +1,9 @@
 # 阶段一：构建静态站点（使用 Ubuntu 确保 glibc 环境）
 FROM ubuntu:22.04 AS builder
 
-# 安装必要工具
+# 安装必要工具（包括 Go，用于 Hugo Modules）
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates && \
+    git curl ca-certificates golang-go && \
     rm -rf /var/lib/apt/lists/*
 
 # 下载并安装 Hugo extended
@@ -21,8 +21,8 @@ RUN case ${TARGETARCH} in \
 # 验证 Hugo 可执行
 RUN hugo version
 
-# 克隆官方 starter 模板（已包含主题和示例内容）
-RUN git clone --depth 1 --recurse-submodules https://github.com/hugo-fixit/hugo-fixit-starter.git /build
+# 克隆官方 starter 模板（包含主题和示例内容）
+RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
 # 构建静态文件
