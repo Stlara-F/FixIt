@@ -41,7 +41,7 @@ RUN for icon in apple-touch-icon.png favicon-32x32.png favicon-16x16.png; do \
 # 验证首页存在
 RUN test -f /public/index.html
 
-FROM nginx:1.29-alpine-slim
+FROM nginx:1.28-alpine-slim
 COPY --from=builder /public /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
