@@ -42,7 +42,8 @@ RUN for icon in apple-touch-icon.png favicon-32x32.png favicon-16x16.png; do \
 RUN test -f /public/index.html
 
 FROM nginx:1.29-alpine-slim
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && \
+    apk add --upgrade musl --no-cache
 COPY --from=builder /public /usr/share/nginx/html
 EXPOSE 80/tcp
 CMD ["nginx", "-g", "daemon off;"]
