@@ -41,8 +41,8 @@ RUN for icon in apple-touch-icon.png favicon-32x32.png favicon-16x16.png; do \
 # 验证首页存在
 RUN test -f /public/index.html
 
-FROM nginx:1.28-alpine-slim
-RUN /bin/sh -c apk upgrade --no-cache # buildkit
-COPY /public /usr/share/nginx/html # buildkit
+FROM nginx:1.29-alpine-slim
+RUN /bin/sh -c apk upgrade --no-cache
+COPY --from=builder /public /usr/share/nginx/html
 EXPOSE 80/tcp
-CMD ["nginx" "-g" "daemon off;"]
+CMD ["nginx", "-g", "daemon off;"]
