@@ -44,5 +44,5 @@ RUN test -f /public/index.html
 FROM nginx:1.28-alpine-slim
 RUN /bin/sh -c apk upgrade --no-cache # buildkit
 COPY /public /usr/share/nginx/html # buildkit
-EXPOSE [80/tcp]
+EXPOSE 80/tcp
 CMD ["nginx" "-g" "daemon off;"]
