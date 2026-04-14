@@ -1,11 +1,11 @@
-# 阶段一：构建静态站点（全架构支持：amd64 / arm64 / armv7）
+# 阶段一：构建静态站点（amd64 / arm64 / armv7 全支持）
 FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates && \
+    git curl ca-certificates golang-go && \
     rm -rf /var/lib/apt/lists/*
 
-# 自动识别架构并下载对应 Hugo
+# 自动识别架构下载 Hugo
 ARG TARGETARCH
 RUN case ${TARGETARCH} in \
         "amd64")  HUGO_ARCH="64bit" ;; \
@@ -20,10 +20,11 @@ RUN case ${TARGETARCH} in \
 
 RUN hugo version
 
-# 下载并构建站点
+# 下载站点源码
 RUN git clone --depth 1 https://github.com/hugo-fixit/hugo-fixit-starter.git /build
 WORKDIR /build
 
+# 构建（现在 go 已安装，不会报错）
 RUN hugo --minify --baseURL "/" --destination /public
 
 # 修复路径
@@ -32,18 +33,17 @@ RUN find /public -type f -name "*.html" -exec sed -i 's|/hugo-fixit-starter/|/|g
 # 复制静态资源
 RUN cp -r /build/static/* /public/ 2>/dev/null || true
 
-# 创建缺失图标
+# 创建缺失图标（不依赖 imagemagick，避免报错）
 RUN for icon in apple-touch-icon.png favicon-32x32.png favicon-16x16.png; do \
     if [ ! -f "/public/$icon" ]; then \
-        echo "Creating placeholder: $icon"; \
         touch /public/$icon; \
     fi; \
 done
 
-# 验证构建结果
+# 验证
 RUN test -f /public/index.html
 
-# 阶段二：运行（支持所有架构）
+# 阶段二：运行（跨架构）
 FROM nginx:1.29-alpine-slim
 
 RUN apk upgrade --no-cache && \
